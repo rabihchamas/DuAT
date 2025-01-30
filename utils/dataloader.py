@@ -9,20 +9,21 @@ import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
+
 class PolypDataset(data.Dataset):
     def __init__(self, image_root, gt_root, trainsize, augmentations):
         self.image_root = image_root
         self.gt_root = gt_root
-        self.samples   = [name for name in os.listdir(image_root) if name[0]!="."]
+        self.samples = [name for name in os.listdir(image_root) if name[0] != "."]
         self.transform = A.Compose([
             A.Normalize(),
             A.Resize(352, 352, interpolation=cv2.INTER_NEAREST),
             A.HorizontalFlip(p=0.2),
             A.VerticalFlip(p=0.2),
-#            A.RandomRotate90(p=0.2),
+            #            A.RandomRotate90(p=0.2),
             ToTensorV2()
         ])
-        
+
         self.color1, self.color2 = [], []
         for name in self.samples:
             if name[:-4].isdigit():
@@ -31,29 +32,29 @@ class PolypDataset(data.Dataset):
                 self.color2.append(name)
 
     def __getitem__(self, idx):
-        name  = self.samples[idx]
-        image = cv2.imread(self.image_root+'/'+name)
+        name = self.samples[idx]
+        image = cv2.imread(self.image_root + '/' + name)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
-        name2  = self.color1[idx%len(self.color1)] if np.random.rand()<0.7 else self.color2[idx%len(self.color2)]
-        image2 = cv2.imread(self.image_root+'/'+name2)
+        name2 = self.color1[idx % len(self.color1)] if np.random.rand() < 0.7 else self.color2[idx % len(self.color2)]
+        image2 = cv2.imread(self.image_root + '/' + name2)
         image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2LAB)
 
-        mean , std  = image.mean(axis=(0,1), keepdims=True), image.std(axis=(0,1), keepdims=True)
-        mean2, std2 = image2.mean(axis=(0,1), keepdims=True), image2.std(axis=(0,1), keepdims=True)
-        image = np.uint8((image-mean)/std*std2+mean2)
+        mean, std = image.mean(axis=(0, 1), keepdims=True), image.std(axis=(0, 1), keepdims=True)
+        mean2, std2 = image2.mean(axis=(0, 1), keepdims=True), image2.std(axis=(0, 1), keepdims=True)
+        image = np.uint8((image - mean) / std * std2 + mean2)
         image = cv2.cvtColor(image, cv2.COLOR_LAB2RGB)
-        mask  = cv2.imread(self.gt_root+'/'+name, cv2.IMREAD_GRAYSCALE)/255.0
-        pair  = self.transform(image=image, mask=mask)
-        
+        mask = cv2.imread(self.gt_root + '/' + name, cv2.IMREAD_GRAYSCALE) / 255.0
+        pair = self.transform(image=image, mask=mask)
+
         return pair['image'], pair['mask']
 
     def __len__(self):
         return len(self.samples)
 
 
-def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_workers=4, pin_memory=True, augmentation=False):
-
+def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_workers=4, pin_memory=True,
+               augmentation=False):
     dataset = PolypDataset(image_root, gt_root, trainsize, augmentation)
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batchsize,
@@ -75,7 +76,7 @@ class test_dataset:
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406],
                                  [0.229, 0.224, 0.225])
-                                 ])
+        ])
         self.gt_transform = transforms.ToTensor()
         self.size = len(self.images)
         self.index = 0
